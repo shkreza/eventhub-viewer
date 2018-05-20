@@ -1,0 +1,199 @@
+<html>
+<head>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script type="text/javascript">var exports=new Array()</script>
+    <script src="../dist/eventhubutils.js"></script>
+    <script type="text/javascript">
+        var events = [];
+        var activeAjax = null;
+        
+        function abortAjax(activeAjax) {
+            if(activeAjax !== null) {
+                    activeAjax.abort();
+            }
+        }
+
+        $(document).ready(function() {
+            $('#stopButton').click(function() {
+                abortAjax(activeAjax);                
+                activeAjax = null;
+            });
+
+            var randomMarker = getRandomMarker(5);
+
+            $('#streamButton').click(function() {
+                var last_response_len = false;
+                var deserializer = new JSONIncrementalDeserializer(randomMarker)
+                abortAjax(activeAjax);                
+
+                activeAjax = $.ajax({
+                    type: 'post',
+                    url: '/events',
+                    data: {
+                        'randomMarker': randomMarker,
+                        'hubConnectionString': $('#hubConnectionString').val(),
+                        'startTimestamp': $('#startTimestamp').val(),
+                        'entityName': $('#entityName').val()
+                    },
+                    dataType: 'text',
+                    processData: true,
+                    xhrFields: {
+                        onprogress: function(e)
+                        {
+                            var this_response, response = e.currentTarget.response;
+                            if(last_response_len === false)
+                            {
+                                this_response = response;
+                                last_response_len = response.length;
+                            }
+                            else
+                            {
+                                this_response = response.substring(last_response_len);
+                                last_response_len = response.length;
+                            }
+                            console.log(this_response);
+
+                            var segments = deserializer.newDataReceived(this_response);
+                            segments.forEach(segment => {
+                                var event = segment;
+                                var currTimestamp = Date.now();
+                                var eventSeqNum = event['annotations']['x-opt-sequence-number'];
+                                var eventOffset = event['annotations']['x-opt-offset'];
+                                var eventEnqueueTimestamp = event['annotations']['x-opt-enqueued-time'];
+                                var delay = (currTimestamp - eventEnqueueTimestamp);
+                                var eventBody = event['body'];
+                                
+                                $('#eventTable > tbody > tr').eq(0).after(
+                                    '<tr>' +
+                                        '<td class="delay">' + delay + '</td>' +
+                                        '<td class="currTimestamp">' + currTimestamp + '</td>' +
+                                        '<td class="eventEnqueueTimestamp">' + eventEnqueueTimestamp + '</td>' +
+                                        '<td class="eventSeqNum">' + eventSeqNum + '</td>' +
+                                        '<td class="eventOffset">' + eventOffset + '</td>' +
+                                        '<td class="eventBody">' + eventBody + '</td>' +
+                                    '</tr>'
+                                )
+                            });
+                        }
+                    }
+                });
+
+                activeAjax.done(function(data) {
+                    console.log('Complete response = ' + data);
+                });
+
+                activeAjax.fail(function(error) {
+                    console.log('Error: ', error);
+                });
+            });
+
+            $('#toggleDelayButton').click(function() {
+                if($('.delay').is(':visible')) {
+                    $('.delay').hide();
+                } else {
+                    $('.delay').show();
+                }
+            });
+
+            $('#toggleCurrTimestampButton').click(function() {
+                if($('.currTimestamp').is(':visible')) {
+                    $('.currTimestamp').hide();
+                } else {
+                    $('.currTimestamp').show();
+                }
+            });
+
+            $('#toggleEventSeqNumButton').click(function() {
+                if($('.eventSeqNum').is(':visible')) {
+                    $('.eventSeqNum').hide();
+                } else {
+                    $('.eventSeqNum').show();
+                }
+            });
+
+            $('#toggleEventOffsetButton').click(function() {
+                if($('.eventOffset').is(':visible')) {
+                    $('.eventOffset').hide();
+                } else {
+                    $('.eventOffset').show();
+                }
+            });
+
+            $('#toggleEventEnqueueTimestampButton').click(function() {
+                if($('.eventEnqueueTimestamp').is(':visible')) {
+                    $('.eventEnqueueTimestamp').hide();
+                } else {
+                    $('.eventEnqueueTimestamp').show();
+                }
+            });
+
+            $('#toggleEventBodyButton').click(function() {
+                if($('.eventBody').is(':visible')) {
+                    $('.eventBody').hide();
+                } else {
+                    $('.eventBody').show();
+                }
+            });
+
+            $('#submitButton').click(function() {
+                var entityName = $('#entityName').val();
+                var hubConnectionString = $('#hubConnectionString').val();
+                var startTimestamp = $('#startTimestamp').val();
+
+                var d = {
+                    'entityName': entityName,
+                    'hubConnectionString': hubConnectionString,
+                    'startTimestamp': startTimestamp
+                };
+
+                events.push(d);
+            });
+        });
+    </script>
+</head>
+
+<body>
+    <div>
+        <input type="button" id="streamButton" value="Stream"/>
+        <input type="button" id="stopButton" value="Stop"/>
+        <br/>
+        <table style="font-family: verdana; text-align: left; font-weight: normal;">
+        <tr>
+            <th>Hub Connection String</th>
+            <th><input type="text" id="hubConnectionString" value=""/></th>
+        </tr>
+        <tr>
+            <th>Entity Name</th>
+            <th><input type="text" id="entityName" value="hub1"/></th>
+        </tr>
+        <tr>
+            <th>Start timestamp</th>
+            <th><input type="text" id="startTimestamp" value="1526534558"/></th>
+        </tr>
+        <tr>
+            <th></th>
+            <th><input type="submit" id="submitButton" name="submitButton" value="Start retrieving events"></th>
+        </tr>
+    </div>
+
+    <div>
+        <input type="button" id="toggleDelayButton" value="Toggle delay"/><br/>
+        <input type="button" id="toggleCurrTimestampButton" value="Toggle Current Timestamp"/><br/>
+        <input type="button" id="toggleEventEnqueueTimestampButton" value="Toggle Enqueue Timestamp"/><br/>
+        <input type="button" id="toggleEventSeqNumButton" value="Toggle Sequence Number"/><br/>
+        <input type="button" id="toggleEventOffsetButton" value="Toggle Event Offset"/><br/>
+        <input type="button" id="toggleEventBodyButton" value="Toggle Event Body"/><br/>
+
+        <table id="eventTable">
+            <tr>
+                <td class="delay">Event Delay</td>
+                <td class="currTimestamp">Current Timestamp</td>
+                <td class="eventEnqueueTimestamp">Event Enqueue Timestamp</td>
+                <td class="eventSeqNum">Event Sequence Number</td>
+                <td class="eventOffset">Event Offset</td>
+                <td class="eventBody">Event Body</td>
+            </tr>
+        </table>
+    </div>
+</body>
+</html>

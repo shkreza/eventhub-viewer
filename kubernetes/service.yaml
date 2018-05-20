@@ -1,0 +1,13 @@
+kind: Service
+apiVersion: v1
+metadata:
+    name: eventhub-viewer
+spec:
+    selector:
+        app: eventhub-viewer
+    ports:
+      - protocol: TCP
+        port: 80
+        targetPort: 4444
+    type:
+        LoadBalancer

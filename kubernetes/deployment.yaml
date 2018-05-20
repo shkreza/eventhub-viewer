@@ -1,0 +1,26 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: eventhub-viewer
+  labels:
+    app: eventhub-viewer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: eventhub-viewer
+  template:
+    metadata:
+      labels:
+        app: eventhub-viewer
+    spec:
+      containers:
+      - name: eventhub-viewer
+        image: shkreza/eventhub-viewer:v0.1
+        ports:
+        - name: port-4444
+          containerPort: 4444
+        resources:
+          limits:
+            cpu: 0.2
+            memory: "80Mi"

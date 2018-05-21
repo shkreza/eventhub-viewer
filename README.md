@@ -2,9 +2,20 @@
 This open source project helps view/inspect your events sent to Azure EventHub/IoTHub.
 
 A live version of this viewer is available [here](http://eventhub.shkreza.com).
+
+## To use the deployed version
+1. Open http://eventhub.shkreza.com in your browser.
+2. Enter your Eventhub's information
+  * Your hub connection string (with _listener_ permission);
+  * Your hub's entity name;
+  * The start time for initial events to receive (click "Select now" button to enter current timestamp).
+  * Your partition name (you can query paritions by clicking "List partitions").
+3. To start receiving events, click "Start streaming" button.
+4. To stop, click "Stop streaming" button.
+
 ![EventHub Viewer](./docs/images/web.PNG)
 
-## To build
+## To build locally
 1. Clone the code with `git clone https://github.com/shkreza/eventhub-viewer.git`
 2. Install TypeScript (see instructions [here](https://code.visualstudio.com/docs/languages/typescript)).
 3. Compile the typescript files in `lib/` folder (this produces `.js` files under `dist/`)
@@ -12,7 +23,7 @@ A live version of this viewer is available [here](http://eventhub.shkreza.com).
   tsc
   ```
 
-## To run in localhost
+## To run locally
 1. Run:
   ```
   node dist/server.js

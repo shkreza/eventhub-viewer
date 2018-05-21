@@ -49,16 +49,18 @@ class App {
             var hubConnectionString = req.body.hubConnectionString;
             var entityName = req.body.entityName;
             var startTimestamp = req.body.startTimestamp;
+            var partitionName = req.body.partitionName;
 
             console.log("DATA: randomMarker=", randomMarker)
             console.log("DATA: hubConnectionString=", this.obfoscate(hubConnectionString))
             console.log("DATA: entityName=", this.obfoscate(entityName))
-            console.log("DATA: startTimestamp=", startTimestamp)
+            console.log("DATA: startTimestamp=", this.obfoscate(startTimestamp))
+            console.log("DATA: partitionName=", this.obfoscate(partitionName))
 
             var connectionState = true;
             req.on('close', function() { connectionState = false; });
 
-            retrieveEvents(hubConnectionString, entityName, startTimestamp, new Transform({
+            retrieveEvents(hubConnectionString, entityName, startTimestamp, partitionName, new Transform({
                 writableObjectMode: true,
 
                 transform(events, encoding, callback) {

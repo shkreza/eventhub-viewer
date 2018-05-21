@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: eventhub-viewer
-        image: shkreza/eventhub-viewer:v0.1
+        image: shkreza/eventhub-viewer:v0.22
         ports:
         - name: port-4444
           containerPort: 4444

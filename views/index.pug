@@ -3,6 +3,10 @@ html(lang='en')
     head
         title= title
         style(type='text/css').
+            p, table, label {
+                font: 15px arial, sans-serif;
+            }
+
             #events_tbl_header {
                 font-weight: bold;
             }
@@ -15,14 +19,14 @@ html(lang='en')
                 border: 3px solid black;
             }
 
-            #events_tbl tr {
+            #events_tbl tr td {
                 border: 1px solid black;
                 white-space: nowrap;
             }
             
             .col_50  { color: black; width: '50px';  }
             .col_100 { width: '100px'; }
-            .col_400 { color: purple; width: '400px'; }
+            .col_400 { color: black; width: '400px'; }
 
             #eventhub_tbl, #eventcontrol_tbl {
                 text-align: left;
@@ -144,12 +148,38 @@ html(lang='en')
                 });
             }
 
+            function checkVariableNotNullOrEmpty(varName, varValue) {
+                if(varValue == null) {
+                    alert("Variable '" + varName + "' cannot be null.")
+                    return false
+                }
+
+                if(varValue.length == 0) {
+                    alert("Variable '" + varName + "' cannot be empty.")
+                    return false
+                }
+
+                return true;
+            }
+
             function startStreaming() {
                 var last_response_len = false
                   , randomMarker = getRandomMarker(5)
                   , deserializer = new JSONIncrementalDeserializer(randomMarker)
                 abortAjax(activeAjax);                
 
+                var hubConnectionString = $('#connectionstring_txtfld').val();
+                if(!checkVariableNotNullOrEmpty('hubConnectionString', hubConnectionString)) { return }
+
+                var startTimestamp = $('#starttimestamp_txtfld').val();
+                if(!checkVariableNotNullOrEmpty('startTimestamp', startTimestamp)) { return }
+
+                var entityName = $('#entityname_txtfld').val();
+                if(!checkVariableNotNullOrEmpty('entityName', entityName)) { return }
+                
+                var partitionName = $('#partition_txtfld').val();
+                if(!checkVariableNotNullOrEmpty('partitionName', partitionName)) { return }
+                
                 activeAjax = $.ajax({
                     type: 'post',
                     url: '/events',
@@ -157,7 +187,8 @@ html(lang='en')
                         'randomMarker': randomMarker,
                         'hubConnectionString': $('#connectionstring_txtfld').val(),
                         'startTimestamp': $('#starttimestamp_txtfld').val(),
-                        'entityName': $('#entityname_txtfld').val()
+                        'entityName': $('#entityname_txtfld').val(),
+                        'partitionName': $('#partition_txtfld').val()
                     },
                     dataType: 'text',
                     processData: true,

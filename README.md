@@ -5,11 +5,14 @@ A live version of this viewer is available [here](http://eventhub.shkreza.com).
 
 ## To use the deployed version
 1. Open http://eventhub.shkreza.com in your browser.
-2. Enter your Eventhub's information
+2. Enter your Eventhub's information:
   * Your hub connection string (with _listener_ permission);
   * Your hub's entity name;
   * The start time for initial events to receive (click "Select now" button to enter current timestamp).
   * Your partition name (you can query paritions by clicking "List partitions").
+  
+   For IoT Hub, use [this instructions](https://docs.microsoft.com/en-us/azure/iot-hub/iot-hub-devguide-messages-read-builtin#read-from-the-built-in-endpoint) to retrieve Event Hub-compatible connection strings.
+  
 3. To start receiving events, click "Start streaming" button.
 4. To stop, click "Stop streaming" button.
 
@@ -72,6 +75,6 @@ Assuming you have already build and pushed the docker image:
   ```
   kubectl get service eventhub-viewer
   ```
-6. Open `http://<YOUR_SERVIE_EXTERNAL_IP>` in your browser (the service routes port `80` to your containers port `4444`).
+6. Open `http://<YOUR_SERVIE_EXTERNAL_IP>` in your browser (the service routes port `80` to your container's port `4444`).
 
 

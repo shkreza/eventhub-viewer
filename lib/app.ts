@@ -4,6 +4,7 @@ import * as bodyParser from "body-parser"
 import { Writable, Transform } from "stream"
 
 import retrievePartitions from "./partition"
+import retrieveEvents from "./events";
 
 import { getSomeJsonData, getRandomMarker, JSONIncrementalDeserializer, JSONIncrementalSerializer } from "./eventhubutils"
 
@@ -26,46 +27,60 @@ class App {
         this.app.set('view engine', 'pug');
     };
 
+    private obfoscate(str): string {
+        if(!str) { return "null" }
+        return new Array(str.length).fill('X').join('');
+    }
+
     private routes(): void {
         const router = express.Router();
 
-        router.get('/incrementaljson', (req: Request, res: Response) => {
-            var rand = req.params.rand;
-
-            var s1 = JSON.stringify({"name": "reza"});
-            var s2 = JSON.stringify({"name": "roya"});
-            var ss = s1 + s2;
-
-            var s3 = ss.substring(0, 10);
-            var s4 = ss.substring(10, ss.length);
-
-            var sss = s3 + rand + s4;
-            var ssss = null;
-            var loc = sss.indexOf(rand, 0)
-            if(loc >= 0) {
-                ssss = sss.substr(0, loc) + ":" + sss.substr(loc+rand.length);
-            } else {
-                ssss = ">" + sss + "<<<"
-            }
-
-            res.status(200).send(sss);
-        });
-
         router.get('/', (req: Request, res: Response) => {
-            res.status(200).send({
-                message: 'Hello world!'
-            })
+            res.redirect('../views');
         });
 
-        router.post('/', (req: Request, res: Response) => {
-            const data = req.body;
-            res.status(200).send(data);
-            console.log(data)
+        router.get('/views', (req: Request, res: Response) => {
+            var data = {'title': 'Event Hubs Event Viewer'};
+            res.render('index', data);
         });
 
-        router.get('/partitions', (req: Request, res: Response) => {
-            const hubConnectionString = process.env['EVENTHUB_CONNECTION_STRING'];
-            const entityName = process.env['EVENTHUB_NAME']
+        router.post('/events', (req: Request, res: Response) => {
+            var randomMarker = req.body.randomMarker;
+            var hubConnectionString = req.body.hubConnectionString;
+            var entityName = req.body.entityName;
+            var startTimestamp = req.body.startTimestamp;
+
+            console.log("DATA: randomMarker=", randomMarker)
+            console.log("DATA: hubConnectionString=", this.obfoscate(hubConnectionString))
+            console.log("DATA: entityName=", this.obfoscate(entityName))
+            console.log("DATA: startTimestamp=", startTimestamp)
+
+            var connectionState = true;
+            req.on('close', function() { connectionState = false; });
+
+            retrieveEvents(hubConnectionString, entityName, startTimestamp, new Transform({
+                writableObjectMode: true,
+
+                transform(events, encoding, callback) {
+                    (events as any).forEach(event => {
+                        console.log("Writing: ", event.body);
+                    });
+
+                    (events as any).forEach(event => {
+                        res.write(JSON.stringify(event));
+                        res.write(randomMarker);
+                    })
+
+                    if(connectionState) {
+                        callback();
+                    }
+                }
+            }));
+        });
+
+        router.post('/partitions', (req: Request, res: Response) => {
+            var hubConnectionString = req.body.hubConnectionString;
+            var entityName = req.body.entityName;
             retrievePartitions(hubConnectionString, entityName).then((result) => {
                 console.log('Received this result: ', result);
                 res.status(200).send({'partitions': result});
@@ -73,11 +88,6 @@ class App {
                 console.log('Received this error: ', error);
                 res.status(500).send({'error': error});
             })
-        });
-
-        router.get('/pug', (req: Request, res: Response) => {
-            var data = {'title': 'New pug title', 'message': 'Hello Reza!'};
-            res.render('index', data);
         });
 
         this.app.use('/', router)

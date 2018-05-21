@@ -19,11 +19,10 @@
                 activeAjax = null;
             });
 
-            var randomMarker = getRandomMarker(5);
-
             $('#streamButton').click(function() {
-                var last_response_len = false;
-                var deserializer = new JSONIncrementalDeserializer(randomMarker)
+                var last_response_len = false
+                  , randomMarker = getRandomMarker(5)
+                  , deserializer = new JSONIncrementalDeserializer(randomMarker)
                 abortAjax(activeAjax);                
 
                 activeAjax = $.ajax({

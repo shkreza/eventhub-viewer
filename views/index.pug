@@ -1,9 +1,327 @@
-html
+doctype html
+html(lang='en')
     head
         title= title
+        style(type='text/css').
+            #events_tbl_header {
+                font-weight: bold;
+            }
+
+            #events_tbl {
+                text-align: left;
+                width: 650px;
+                color: black;
+                border-collapse: collapse;
+                border: 3px solid black;
+            }
+
+            #events_tbl tr {
+                border: 1px solid black;
+                white-space: nowrap;
+            }
+            
+            .col_50  { color: black; width: '50px';  }
+            .col_100 { width: '100px'; }
+            .col_400 { color: purple; width: '400px'; }
+
+            #eventhub_tbl, #eventcontrol_tbl {
+                text-align: left;
+                width: 500px;
+                color: black;
+                border-collapse: collapse;
+                border: 3px solid black;
+            }
+
+            #eventhub_tbl, #eventcontrol_tbl tr {
+                vertical-align: top;
+            }
+
+            .btn {
+                color: black;
+            }
+
+            h3 {
+                color: black;
+            }
+
         script(src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js")
         script(type='text/javascript').
-            alert('hi')
-    body
-        h1= message
+            var exports = []
+              , col_visibility_matrix = {'eventBody': true, 'eventOffset': true, 'eventSeqNum': true, 'eventEnqueueTimestamp': true, 'delay': true};
 
+        script(src='../dist/eventhubutils.js')
+
+        script(type='text/javascript').
+            var eventhubinfo = new EventHubInfo()
+              , activeAjax = null;
+
+        script(type='text/javascript').
+            function prepareUi() {
+
+                // Set 'select now' button's action
+                $('#selectnow_btn').click(function() {
+                    $('#starttimestamp_txtfld').val(Date.now());
+                });
+
+                $('#showpartition_btn').click(function() {
+                    // Do crazy ajax :)
+                    $.ajax({
+                    type: 'post',
+                    url: '/partitions',
+                    data: {
+                        'hubConnectionString': $('#connectionstring_txtfld').val(),
+                        'entityName': $('#entityname_txtfld').val()
+                    },
+                    dataType: 'json',
+                    processData: true,
+                    success: function(data) {
+                        var partitions = data['partitions'];
+                        alert('Your hub has ' + partitions.length + ' partitions: [' + partitions.join(',') + '].');
+                    }
+                    });
+                });
+
+                // Set 'start' button's action
+                $('#start_btn').click(function() {
+                    // Do crazy ajax :)
+                    startStreaming();
+                });
+
+                // Set 'stop' button's action
+                $('#stop_btn').click(function() {
+                    abortAjax(activeAjax);                
+                    activeAjax = null;
+                });
+
+                $('#delay_chbx').on('change', function() {
+                    if(col_visibility_matrix['delay']) {
+                        $('.delay_cls').css('display', 'none');
+                    } else {
+                        $('.delay_cls').css('display', 'block');
+                    }
+
+                    col_visibility_matrix['delay'] = !col_visibility_matrix['delay'];
+                });
+
+                $('#enque_time_chbx').on('change', function() {
+                    if(col_visibility_matrix['eventEnqueueTimestamp']) {
+                        $('.eventEnqueueTimestamp_cls').hide();
+                    } else {
+                        $('.eventEnqueueTimestamp_cls').show();
+                    }
+
+                    col_visibility_matrix['eventEnqueueTimestamp'] = !col_visibility_matrix['eventEnqueueTimestamp'];
+                });
+
+                $('#seq_num_chbx').on('change', function() {
+                    if(col_visibility_matrix['eventSeqNum']) {
+                        $('.eventSeqNum_cls').hide();
+                    } else {
+                        $('.eventSeqNum_cls').show();
+                    }
+
+                    col_visibility_matrix['eventSeqNum'] = !col_visibility_matrix['eventSeqNum'];
+                });
+
+                $('#offset_chbx').on('change', function() {
+                    if(col_visibility_matrix['eventOffset']) {
+                        $('.eventOffset_cls').hide();
+                    } else {
+                        $('.eventOffset_cls').show();
+                    }
+
+                    col_visibility_matrix['eventOffset'] = !col_visibility_matrix['eventOffset'];
+                });
+
+                $('#body_chbx').on('change', function() {
+                    if(col_visibility_matrix['eventBody']) {
+                        $('.eventBody_cls').hide();
+                    } else {
+                        $('.eventBody_cls').show();
+                    }
+
+                    col_visibility_matrix['eventBody'] = !col_visibility_matrix['eventBody'];                    
+                });
+            }
+
+            function startStreaming() {
+                var last_response_len = false
+                  , randomMarker = getRandomMarker(5)
+                  , deserializer = new JSONIncrementalDeserializer(randomMarker)
+                abortAjax(activeAjax);                
+
+                activeAjax = $.ajax({
+                    type: 'post',
+                    url: '/events',
+                    data: {
+                        'randomMarker': randomMarker,
+                        'hubConnectionString': $('#connectionstring_txtfld').val(),
+                        'startTimestamp': $('#starttimestamp_txtfld').val(),
+                        'entityName': $('#entityname_txtfld').val()
+                    },
+                    dataType: 'text',
+                    processData: true,
+                    xhrFields: {
+                        onprogress: function(e)
+                        {
+                            var this_response, response = e.currentTarget.response;
+                            if(last_response_len === false)
+                            {
+                                this_response = response;
+                                last_response_len = response.length;
+                            }
+                            else
+                            {
+                                this_response = response.substring(last_response_len);
+                                last_response_len = response.length;
+                            }
+                            console.log(this_response);
+
+                            var segments = deserializer.newDataReceived(this_response);
+                            segments.forEach(segment => {
+                                var event = segment;
+                                newEventReceived(event);
+                            });
+                        }
+                    }
+                });
+
+                activeAjax.done(function(data) {
+                    console.log('Complete response = ' + data);
+                });
+
+                activeAjax.fail(function(error) {
+                    console.log('Error: ', error);
+                });
+            }
+
+            function abortAjax(activeAjax) {
+                if(activeAjax) { activeAjax.abort(); } 
+            }
+
+            function showUpdatedEventCount(eventhubinfo) {
+                $('#eventcount_lbl').text('Events received = ' + eventhubinfo.getCount());
+            }
+
+            function newEventReceived(e) {
+                if(!e) { return; }
+                $('#events_tbl_last_row').hide();
+
+                eventhubinfo.addNewEvent(e);
+                showUpdatedEventCount(eventhubinfo);
+                
+                var currTimestamp = Date.now();
+                var eventSeqNum = e['annotations']['x-opt-sequence-number'];
+                var eventOffset = e['annotations']['x-opt-offset'];
+                var eventEnqueueTimestamp = e['annotations']['x-opt-enqueued-time'];
+                var delay = (currTimestamp - eventEnqueueTimestamp);
+                var eventBody = e['body'];
+                
+                function getVisibility(val) {
+                    if(val) { return ''; } else { return 'style="display: none"'; }
+                }
+
+                var newRow = 
+                        '<tr>' +
+                        '<td class="delay_cls" ' + getVisibility(col_visibility_matrix['delay']) + '>' + delay + '</td>' +
+                        '<td class="eventEnqueueTimestamp_cls" ' + getVisibility(col_visibility_matrix['eventEnqueueTimestamp']) + '>' + eventEnqueueTimestamp + '</td>' +
+                        '<td class="eventSeqNum_cls" ' + getVisibility(col_visibility_matrix['eventSeqNum']) + '>' + eventSeqNum + '</td>' +
+                        '<td class="eventOffset_cls" ' + getVisibility(col_visibility_matrix['eventOffset']) + '>' + eventOffset + '</td>' +
+                        '<td class="eventBody_cls" ' + getVisibility(col_visibility_matrix['eventBody']) + '>' + eventBody + '</td>' +
+                    '</tr>';
+
+                console.log(newRow);
+
+                $('#events_tbl > tbody > tr').eq(0).after(
+                    newRow
+                )
+            }
+
+        script(type='text/javascript').
+            $(document).ready(function() {
+                prepareUi();
+            });
+
+
+    body
+        h1 Event Hubs Event Viewer
+
+        div.eventhub_div
+            h3 Fill in your event hubs information to retrieve events
+            table#eventhub_tbl
+                tr
+                    td
+                        label(for='Connection string') Connection string
+                    td(colspan='2')
+                        input#connectionstring_txtfld.txtfld(type='text',width='100%',value='')
+                tr
+                    td
+                        label(for='Entity name') Entity name
+                    td(colspan='2')
+                        input#entityname_txtfld.txtfld(type='text',name='entityname_txtfld',width='100%',value='')
+
+                tr
+                    td
+                        label(for='Start timestamp') Start timestamp
+                    td
+                        input#starttimestamp_txtfld.txtfld(type='text',name='starttimestamp_txtfld')
+                    td
+                        input#selectnow_btn.btn(type='button',name='selectnow_btn',value='Select now')
+
+                tr
+                    td
+                        label(for='Partition') Partition
+                    td
+                        input#partition_txtfld.txtfld(type='text',name='partition_txtfld')
+                    td
+                        input#showpartition_btn.btn(type='button',name='showpartition_btn',value='List partitions')
+
+        div.eventcontrol_div
+            h3 Control events
+            table#eventcontrol_tbl
+                tr
+                    td Stream
+                    td(colspan='2')
+                        input#start_btn.btn(type='button',name='start_btn',value='Start streaming')
+                    td(colspan='2')
+                        input#stop_btn.btn(type='button',name='stop_btn',value='Stop streaming')
+                    td
+                tr
+                  td(rowspan='2') Toggle columns
+                  td Delay
+                  td Enque time
+                  td Sequence number
+                  td Offset
+                  td Body
+                tr
+                  td
+                    input#delay_chbx(type='checkbox',name='delay_chbx',checked='true')
+                  td
+                    input#enque_time_chbx(type='checkbox',name='enque_time_chbx',checked='true')
+                  td
+                    input#seq_num_chbx(type='checkbox',name='seq_num_chbx',checked='true')
+                  td
+                    input#offset_chbx(type='checkbox',name='offset_chbx',checked='true')
+                  td
+                    input#body_chbx(type='checkbox',name='body_chbx',checked='true')
+
+        div.events_div
+            h3 Your events will appear here
+
+            h4#eventcount_lbl(for='Event count',name='eventcount_lbl') Events received = 0
+
+            table#events_tbl
+                tr#events_tbl_header(style='border: 1px')
+                    td.col_50.delay_cls Delay
+                    td.col_50.eventEnqueueTimestamp_cls Enque Time
+                    td.col_50.eventSeqNum_cls Seq Num
+                    td.col_50.eventOffset_cls Offset
+                    td.col_400.eventBody_cls Body
+
+
+                tr#events_tbl_last_row
+                    td.col_50.delay_cls None
+                    td.col_50.eventEnqueueTimestamp_cls None
+                    td.col_50.eventSeqNum_cls None
+                    td.col_50.eventOffset_cls None
+                    td.col_400.eventBody_cls None

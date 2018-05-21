@@ -1,3 +1,22 @@
+export class EventHubInfo {
+    eventsReceived: number;
+    events: Array<object>;
+    eventhubPartitions: Array<string>;
+
+    constructor() {
+        this.eventsReceived = 0;
+        this.events = new Array<object>();
+        this.eventhubPartitions = new Array<string>();
+    }
+
+    addNewEvent(e) {
+        this.events.push(e);
+    }
+
+    getCount() { return this.events.length; }
+    
+}
+
 export function getSomeJsonData(randomMarker, count=100) {
     var e = {"name": "reza"};
     var data = new Array(count).fill(0).map((x, y)=> {

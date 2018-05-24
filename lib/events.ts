@@ -1,20 +1,18 @@
 import { Writable, Transform } from "stream";
 
 const { Writeable } = require('stream');
-const { EventHubClient, EventPosition } = require('azure-event-hubs');
+const { EventHubClient, EventPosition, isIotHubConnectionString } = require('azure-event-hubs');
 
-function retrieveEvents(hubConnectionString, entityName, startTimestamp, partitionName, w: Transform) {
-    const client = EventHubClient.createFromConnectionString(hubConnectionString, entityName);
-
+function useClientToSendData(eventHubClient, startTimestamp, partitionName, w: Transform) {
     var latest_marker = startTimestamp || Date.now();
 
     const receiveMore = function() {
-        const promise = client.receiveBatch(partitionName,
-                                            10,
-                                            1,
-                                            {
-                                                eventPosition: EventPosition.fromEnqueuedTime(latest_marker)
-                                            });
+        const promise = eventHubClient.receiveBatch(partitionName,
+                                                    10,
+                                                    1,
+                                                    {
+                                                        eventPosition: EventPosition.fromEnqueuedTime(latest_marker)
+                                                    });
         promise.then((datas) => {
             w.write(datas, receiveMore);
             datas.forEach(event => {
@@ -24,6 +22,17 @@ function retrieveEvents(hubConnectionString, entityName, startTimestamp, partiti
     };
 
     receiveMore();
+}
+
+async function retrieveEvents(hubConnectionString, entityName, startTimestamp, partitionName, w: Transform) {
+    
+    if(isIotHubConnectionString(hubConnectionString)) {
+        const client = await EventHubClient.createFromIotHubConnectionString(hubConnectionString);
+        useClientToSendData(client, startTimestamp, partitionName, w);
+    } else {
+        const client = EventHubClient.createFromConnectionString(hubConnectionString, entityName);
+        useClientToSendData(client, startTimestamp, partitionName, w);
+    }
 };
 
 export default retrieveEvents;

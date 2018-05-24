@@ -80,16 +80,12 @@ class App {
             }));
         });
 
-        router.post('/partitions', (req: Request, res: Response) => {
+        router.post('/partitions', async function (req: Request, res: Response) {
             var hubConnectionString = req.body.hubConnectionString;
             var entityName = req.body.entityName;
-            retrievePartitions(hubConnectionString, entityName).then((result) => {
-                console.log('Received this result: ', result);
-                res.status(200).send({'partitions': result});
-            }, (error) => {
-                console.log('Received this error: ', error);
-                res.status(500).send({'error': error});
-            })
+            var partitionIds = await retrievePartitions(hubConnectionString, entityName);
+            console.log('Received this result: ', partitionIds);
+            res.status(200).send({'partitions': partitionIds});
         });
 
         this.app.use('/', router)

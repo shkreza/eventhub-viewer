@@ -79,6 +79,6 @@ Assuming you have already build and pushed the docker image:
   ```
   kubectl get service eventhub-viewer
   ```
-7. Open `https://<YOUR_SERVIE_EXTERNAL_IP>` in your browser.
+7. Open `https://<YOUR_DOMAIN_NAME>` in your browser.
 
 

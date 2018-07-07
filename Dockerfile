@@ -10,5 +10,7 @@ COPY . .
 COPY static .
 COPY dist .
 
+EXPOSE 443
 EXPOSE 4444
+
 CMD [ "npm", "start" ]

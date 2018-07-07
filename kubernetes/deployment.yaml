@@ -16,11 +16,19 @@ spec:
     spec:
       containers:
       - name: eventhub-viewer
-        image: shkreza/eventhub-viewer:v0.22
+        image: shkreza/eventhub-viewer:v0.27
         ports:
-        - name: port-4444
-          containerPort: 4444
+        - name: port-443
+          containerPort: 443
         resources:
           limits:
             cpu: 0.2
             memory: "80Mi"
+        volumeMounts:
+        - name: tls-secrets
+          mountPath: /secrets/tls-secrets
+          readOnly: true
+      volumes:
+      - name: tls-secrets
+        secret:
+          secretName: tls-secrets

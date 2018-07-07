@@ -1,7 +1,15 @@
 import app from "./app"
+import * as https from "https"
+import * as http from "http"
+import * as fs from "fs"
 
-const port = 4444;
+const httpPort = 4444;
+var httpServer = http.createServer(app);
+httpServer.listen(httpPort);
 
-app.listen(port, function(){
-    console.log('Express server listening on port ' + port);
-});
+const httpsPort = 443;
+var httpsServer = https.createServer({
+            key: fs.readFileSync('/secrets/tls-secrets/tls.key'),
+            cert: fs.readFileSync('/secrets/tls-secrets/tls.crt')
+        }, app);
+httpsServer.listen(httpsPort);

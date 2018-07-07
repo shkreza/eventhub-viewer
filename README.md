@@ -26,7 +26,7 @@ A live version of this viewer is available [here](http://eventhub.shkreza.com).
   tsc
   ```
 
-## To run locally
+## To run locally (HTTP only)
 1. Run:
   ```
   node dist/server.js
@@ -51,30 +51,34 @@ A live version of this viewer is available [here](http://eventhub.shkreza.com).
   docker run -p 4444:4444 <YOUR_IMAGE_NAME>
   ```
 
-4. Open `http://<DOCKER_HOST>:4444` in your browser.
+4. Open `http://<DOCKER_HOST>:4444` in your browser (the service routes port `80` to your container's port `4444`).
 
-## To deploy in Kubernetes
+## To deploy in Kubernetes (HTTPS)
 Assuming you have already build and pushed the docker image:
-1. Update `kubernetes/deployment.yaml` with `YOUR_IMAGE_NAME`:
+1. Add your site certitifates as TLS secrets in Kubernetes:
+  ```
+  kubectl create secret tls tls-secret --key=tls.key --cert=tls.crt
+  ```
+2. Update `kubernetes/deployment.yaml` with `YOUR_IMAGE_NAME`:
   ```yaml
       spec:
         containers:
         - name: eventhub-viewer
           image: <YOUR_IMAGE_NAME>
   ```
-2. Deploy Kubernetes container:
+3. Deploy Kubernetes container:
   ```
   kubectl create -f kubernetes/deployment.yaml
   ```
-3. Deploy Kubernetes service (loadbalancer):
+4. Deploy Kubernetes service (loadbalancer):
   ```
   kubectl create -f kubernetes/service.yaml
 ```
-4. Check your services' external IP:
-5. Deploy Kubernetes container
+5. Check your services' external IP:
+6. Deploy Kubernetes container
   ```
   kubectl get service eventhub-viewer
   ```
-6. Open `http://<YOUR_SERVIE_EXTERNAL_IP>` in your browser (the service routes port `80` to your container's port `4444`).
+7. Open `https://<YOUR_SERVIE_EXTERNAL_IP>` in your browser.
 
 
